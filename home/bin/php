@@ -1,0 +1,78 @@
+#!/bin/sh
+#
+# Substitutes `php` binary for one executed inside a Docker container.
+#
+# Author: Augusto Pascutti <augusto.hp@gmail.com>
+
+# Configuration
+PHP_IMAGE=${PHP_IMAGE:-"php"}
+PHP_VERSION=${PHP_VERSION:-"latest"}
+PHP_HOME=${PHP_HOME:-$HOME/.docker-php}
+
+# Dependencies
+DOCKER=$(which docker 2> /dev/null)
+
+# Sanity checks
+test -z "$DOCKER" && { echo "Error: Docker not installed." >&2; exit 2; }
+test -d "${PHP_HOME}" || { mkdir -p "${PHP_HOME}"; }
+
+# -----------------------------------------------------------------------------
+docker_args=""
+all_args="${@}"
+extra_volumes=""
+workdir=/var/www
+
+# Usage: print_dirname <path>
+print_dirname ()
+{
+	file_or_dir="$1"
+
+	if [ -d "${file_or_dir}" ]
+	then
+		echo ${file_or_dir}
+        return 0
+	fi
+
+	echo $(dirname "${file_or_dir}")
+}
+
+test ! -z "$DEBUG" && { set -x; }
+
+while :;
+do
+    if [ $# = 0 ]
+    then
+        break
+    fi
+
+	case $1 in
+		-a)
+			# Interactive PHP shell, forces docker to be interactive as well
+			docker_args="-it"
+			;;
+        -S)
+            # PHP web server for testing
+            server_ip=$(echo $2 | cut -d: -f1)
+            server_port=$(echo $2 | cut -d: -f2)
+            docker_args="-i -p ${server_port}:${server_port}"
+            ;;
+		*)
+            # Options that require a file must have their volume in the container
+            if [ -f "$1" ] || [ -d "$1" ]
+            then
+                volume_dir=$(print_dirname "${1}")
+                extra_volumes="--volume ${volume_dir}:${volume_dir} $extra_volumes"
+            fi
+			;;
+	esac
+	shift
+done
+
+test ! -z "$workdir" && { docker_args="--workdir ${workdir} $docker_args"; }
+
+# Running the image
+${DOCKER} run ${docker_args} \
+	--volume "${PWD}:/var/www" \
+	--volume "${PHP_HOME}:/root" \
+	$extra_volumes \
+	${PHP_IMAGE}:${PHP_VERSION} ${all_args}
