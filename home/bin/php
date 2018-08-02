@@ -41,22 +41,22 @@ test ! -z "$DEBUG" && { set -x; }
 
 while :;
 do
-    if [ $# = 0 ]
-    then
-        break
-    fi
+	if [ $# = 0 ]
+	then
+		break
+	fi
 
 	case $1 in
 		-a)
 			# Interactive PHP shell, forces docker to be interactive as well
 			docker_args="-it"
 			;;
-        -S)
-            # PHP web server for testing
-            server_ip=$(echo $2 | cut -d: -f1)
-            server_port=$(echo $2 | cut -d: -f2)
-            docker_args="-i -p ${server_port}:${server_port}"
-            ;;
+		-S)
+			# PHP web server for testing
+			server_ip=$(echo $2 | cut -d: -f1)
+			server_port=$(echo $2 | cut -d: -f2)
+			docker_args="-i -p ${server_port}:${server_port}"
+			;;
 		*)
 			# Options that require a file must have their volume in the container
 			if [ -f "$1" ] || [ -d "$1" ]
