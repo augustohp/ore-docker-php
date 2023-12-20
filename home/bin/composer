@@ -28,16 +28,21 @@ current_group=$($ID -g)
 docker_args=
 shift
 
-if [ "${composer_command}" == "install" ] || [ "${composer_command}" == "update" ]
+# Avoids checking requirements (container is checked rather than host)
+if [ "${composer_command}" = "install" ] || [ "${composer_command}" = "update" ]
 then
 	composer_params="--ignore-platform-reqs --no-scripts"
 fi
-if [ "$(uname)" == "Linux" ]
+
+# SSH support, to use with private repositories
+if [ "$(uname)" = "Linux" ]
 then
 	docker_args="--volume $SSH_AUTH_SOCK:/ssh-auth.sock --env SSH_AUTH_SOCK=/ssh-auth.sock $docker_args"
 fi
 
 tty -s && { docker_args="--tty ${docker_args}"; }
+
+# shellcheck disable=SC2086,SC2068
 docker run --rm \
 	--interactive \
 	${docker_args} \
@@ -46,5 +51,8 @@ docker run --rm \
 	--volume "${COMPOSER_HOME}:/tmp" \
 	--volume /etc/passwd:/etc/passwd:ro \
 	--volume /etc/group:/etc/group:ro \
-	${PHP_COMPOSER_IMAGE}:${PHP_COMPOSER_VERSION} ${composer_command} ${composer_params} $@
+	"${PHP_COMPOSER_IMAGE}:${PHP_COMPOSER_VERSION}" \
+	"${composer_command}" \
+	${composer_params} \
+	$@
 
